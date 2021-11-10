@@ -39,6 +39,7 @@ from .generation_logits_process import (
     TemperatureLogitsWarper,
     TopKLogitsWarper,
     TopPLogitsWarper,
+    LogitBiasWarper
 )
 from .generation_stopping_criteria import (
     MaxLengthCriteria,
@@ -522,7 +523,7 @@ class GenerationMixin:
         )
 
     def _get_logits_warper(
-        self, top_k: int = None, top_p: float = None, temperature: float = None, num_beams: int = None
+        self, top_k: int = None, top_p: float = None, temperature: float = None, num_beams: int = None, logit_bias :dict = None
     ) -> LogitsProcessorList:
         """
         This class returns a :obj:`~transformers.LogitsProcessorList` list object that contains all relevant
@@ -533,11 +534,14 @@ class GenerationMixin:
         top_k = top_k if top_k is not None else self.config.top_k
         top_p = top_p if top_p is not None else self.config.top_p
         temperature = temperature if temperature is not None else self.config.temperature
+        logit_bias = logit_bias if logit_bias is not None else None
         # instantiate warpers list
         warpers = LogitsProcessorList()
 
         # the following idea is largely copied from this PR: https://github.com/huggingface/transformers/pull/5420/files
         # all samplers can be found in `generation_utils_samplers.py`
+        if logit_bias is not None:
+            warpers.append(LogitBiasWarper(logit_bias))
         if temperature is not None and temperature != 1.0:
             warpers.append(TemperatureLogitsWarper(temperature))
         if top_k is not None and top_k != 0:
@@ -647,6 +651,7 @@ class GenerationMixin:
         num_beams: Optional[int] = None,
         temperature: Optional[float] = None,
         top_k: Optional[int] = None,
+        logit_bias: Optional[dict] = None,
         top_p: Optional[float] = None,
         repetition_penalty: Optional[float] = None,
         bad_words_ids: Optional[Iterable[int]] = None,
@@ -1002,7 +1007,7 @@ class GenerationMixin:
         elif is_sample_gen_mode:
             # get probability distribution warper
             logits_warper = self._get_logits_warper(
-                top_k=top_k, top_p=top_p, temperature=temperature, num_beams=num_beams
+                top_k=top_k, top_p=top_p, temperature=temperature, num_beams=num_beams, logit_bias = logit_bias
             )
 
             # expand input_ids with `num_return_sequences` additional sequences per batch
@@ -1066,7 +1071,7 @@ class GenerationMixin:
 
         elif is_beam_sample_gen_mode:
             logits_warper = self._get_logits_warper(
-                top_k=top_k, top_p=top_p, temperature=temperature, num_beams=num_beams
+                top_k=top_k, top_p=top_p, temperature=temperature, num_beams=num_beams, logit_bias = logit_bias
             )
 
             batch_size = input_ids.shape[0] * num_return_sequences

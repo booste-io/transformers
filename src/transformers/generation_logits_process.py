@@ -241,6 +241,23 @@ class TopKLogitsWarper(LogitsWarper):
         scores = scores.masked_fill(indices_to_remove, self.filter_value)
         return scores
 
+class LogitBiasWarper(LogitsWarper):
+
+    def __init__(self, logit_bias: dict):
+        if not isinstance(logit_bias, dict):
+            raise ValueError(f"`logit_bias` has to be a dict, but is {logit_bias}")
+
+        self.logit_bias = logit_bias
+
+    def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor) -> torch.FloatTensor:
+        for i in range(len(logit_bias)):
+            curr_token_bias = logit_bias[i]
+            token = curr_token_bias[0]
+            bias = curr_token_bias[1]
+            scores[token] += bias
+
+        return scores
+
 
 def _get_ngrams(ngram_size: int, prev_input_ids: torch.Tensor, num_hypos: int):
     generated_ngrams = [{} for _ in range(num_hypos)]
