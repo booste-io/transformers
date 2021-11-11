@@ -251,7 +251,6 @@ class LogitBiasWarper(LogitsWarper):
 
     def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor) -> torch.FloatTensor:
         for token,bias in self.logit_bias.items():
-            print(scores.shape)
             token = int(token)
             scores[0][token] += bias
 
