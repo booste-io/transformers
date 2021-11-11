@@ -250,8 +250,8 @@ class LogitBiasWarper(LogitsWarper):
         self.logit_bias = logit_bias
 
     def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor) -> torch.FloatTensor:
-        for i in range(len(logit_bias)):
-            curr_token_bias = logit_bias[i]
+        for i in range(len(self.logit_bias)):
+            curr_token_bias = self.logit_bias[i]
             token = curr_token_bias[0]
             bias = curr_token_bias[1]
             scores[token] += bias
