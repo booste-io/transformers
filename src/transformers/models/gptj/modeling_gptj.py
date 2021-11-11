@@ -31,7 +31,7 @@ from .configuration_gptj import GPTJConfig
 
 
 logger = logging.get_logger(__name__)
-
+torch.set_default_dtype(torch.float16)
 _CHECKPOINT_FOR_DOC = "EleutherAI/gpt-j-6B"
 _CONFIG_FOR_DOC = "GPTJConfig"
 _TOKENIZER_FOR_DOC = "GPT2Tokenizer"
@@ -124,6 +124,7 @@ class GPTJAttention(nn.Module):
             raise ValueError(f"Input tensor rank should be one of [4, 5], but is: {len(tensor.shape)}")
         new_shape = tensor.size()[:-2] + (num_attention_heads * attn_head_size,)
         return tensor.view(new_shape)
+
 
     def _attn(
         self,
@@ -254,13 +255,20 @@ class GPTJMLP(nn.Module):
 
 
 class GPTJBlock(nn.Module):
-    def __init__(self, config):
+    def __init__(self, config,num):
         super().__init__()
         inner_dim = config.n_inner if config.n_inner is not None else 4 * config.n_embd
         self.ln_1 = nn.LayerNorm(config.n_embd, eps=config.layer_norm_epsilon)
         self.attn = GPTJAttention(config)
         self.mlp = GPTJMLP(inner_dim, config)
-
+        device_map = get_device_map(28,range(torch.cuda.device_count()))
+        for k,v in device_map.items():
+            for val in v:
+                if val==num:
+                    cuda_device = "cuda:" + str(k)
+                    self.ln_1 = self.ln_1.to(cuda_device)
+                    self.attn = self.attn.to(cuda_device)
+                    self.mlp = self.mlp.to(cuda_device)
     def forward(
         self,
         hidden_states,
@@ -442,7 +450,7 @@ class GPTJModel(GPTJPreTrainedModel):
         self.vocab_size = config.vocab_size
         self.wte = nn.Embedding(config.vocab_size, self.embed_dim)
         self.drop = nn.Dropout(config.embd_pdrop)
-        self.h = nn.ModuleList([GPTJBlock(config) for _ in range(config.n_layer)])
+        self.h = nn.ModuleList([GPTJBlock(config,i) for i in range(config.n_layer)])
         self.ln_f = nn.LayerNorm(self.embed_dim, eps=config.layer_norm_epsilon)
         self.init_weights()
 
