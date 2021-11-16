@@ -646,7 +646,7 @@ class GenerationMixin:
         input_ids: Optional[torch.LongTensor] = None,
         max_length: Optional[int] = None,
         min_length: Optional[int] = None,
-        do_sample: Optional[bool] = None,
+        do_sample: Optional[bool] = True,
         early_stopping: Optional[bool] = None,
         num_beams: Optional[int] = None,
         temperature: Optional[float] = None,
