@@ -250,9 +250,12 @@ class LogitBiasWarper(LogitsWarper):
         self.logit_bias = logit_bias
 
     def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor) -> torch.FloatTensor:
-        for token,bias in self.logit_bias.items():
-            token = int(token)
-            scores[0][token] += bias
+        try:
+            for token,bias in self.logit_bias.items():
+                token = int(token)
+                scores[0][token] += bias
+        except:
+            print("Couldn't apply logit bias, token out of vocab index")
 
         return scores
 
